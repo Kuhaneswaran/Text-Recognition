@@ -1,5 +1,6 @@
 package com.kuhan.textrecognition
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -18,7 +19,10 @@ import com.kuhan.textrecognition.databinding.FragmentStaticTextRecognitionBindin
 
 class StaticTextRecognitionFragment : Fragment() {
 
+    private val activityForPermission = ActivityResultContracts.RequestPermission()
     private val activityForResult = ActivityResultContracts.StartActivityForResult()
+    private lateinit var permissionLauncher: ActivityResultLauncher<String>
+    private lateinit var permissionListener: (Boolean) -> Unit
     private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
     private lateinit var cameraLauncher: ActivityResultLauncher<Intent>
 
@@ -27,6 +31,10 @@ class StaticTextRecognitionFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        permissionLauncher = registerForActivityResult(activityForPermission) {
+            permissionListener(it)
+        }
 
         cameraLauncher = registerForActivityResult(activityForResult) {
             if (it.resultCode == Activity.RESULT_OK) viewModel.updateUri()
@@ -44,7 +52,16 @@ class StaticTextRecognitionFragment : Fragment() {
         binding = FragmentStaticTextRecognitionBinding.inflate(inflater, container, false)
 
         binding.btnTakePhoto.setOnClickListener {
-            cameraLauncher.launch(viewModel.prepareCameraIntent(requireActivity()))
+            val intent = viewModel.prepareCameraIntent(requireActivity())
+            intent ?: return@setOnClickListener showToast("Unable to prep camera")
+            if (checkPermission(Manifest.permission.CAMERA)) cameraLauncher.launch(intent)
+            else {
+                permissionLauncher.launch(Manifest.permission.CAMERA)
+                permissionListener = {
+                    if (it) cameraLauncher.launch(intent)
+                    else showToast("Permission not granted by the user.")
+                }
+            }
         }
 
         binding.btnSelectGallery.setOnClickListener {

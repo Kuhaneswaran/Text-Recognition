@@ -79,11 +79,20 @@ class StaticTextRecognitionFragment : Fragment() {
 
     private fun processImage(uri: Uri?) {
         val image = uri ?: return showToast("Invalid URI")
-        val inputImage = InputImage.fromFilePath(requireActivity(), image)
-        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS).process(inputImage)
-            .addOnSuccessListener {
-                binding.boOverlay.add(it, inputImage.width, inputImage.height)
-            }
-            .addOnFailureListener { showToast(it.localizedMessage) }
+
+        try {
+
+            val inputImage = InputImage.fromFilePath(requireActivity(), image)
+            TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS).process(inputImage)
+                .addOnSuccessListener {
+                    binding.boOverlay.add(it, inputImage.width, inputImage.height)
+                }
+                .addOnFailureListener {
+                    showToast(it.localizedMessage)
+                }
+
+        } catch (ex: Exception) {
+            showToast(ex.localizedMessage)
+        }
     }
 }

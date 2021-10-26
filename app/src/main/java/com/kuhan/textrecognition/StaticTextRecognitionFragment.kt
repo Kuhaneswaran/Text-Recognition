@@ -10,12 +10,18 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.kuhan.textrecognition.databinding.FragmentStaticTextRecognitionBinding
+import com.kuhan.textrecognition.utils.*
+import java.util.*
 
 class StaticTextRecognitionFragment : Fragment() {
 
@@ -51,6 +57,8 @@ class StaticTextRecognitionFragment : Fragment() {
 
         binding = FragmentStaticTextRecognitionBinding.inflate(inflater, container, false)
 
+        binding.btnSaveOutput.isVisible = false
+
         binding.btnTakePhoto.setOnClickListener {
             val intent = viewModel.prepareCameraIntent(requireActivity())
             intent ?: return@setOnClickListener showToast("Unable to prep camera")
@@ -79,20 +87,36 @@ class StaticTextRecognitionFragment : Fragment() {
 
     private fun processImage(uri: Uri?) {
         val image = uri ?: return showToast("Invalid URI")
-
+        binding.btnSaveOutput.isVisible = false
         try {
-
             val inputImage = InputImage.fromFilePath(requireActivity(), image)
             TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS).process(inputImage)
                 .addOnSuccessListener {
+                    binding.btnSaveOutput.isVisible = true
                     binding.boOverlay.add(it, inputImage.width, inputImage.height)
+                    binding.btnSaveOutput.setOnClickListener { _ -> saveOutput(it) }
                 }
                 .addOnFailureListener {
+                    binding.btnSaveOutput.isVisible = false
                     showToast(it.localizedMessage)
                 }
-
         } catch (ex: Exception) {
             showToast(ex.localizedMessage)
         }
+    }
+
+    private fun saveOutput(text: Text) {
+        val file = MLKitUtils().getTextFile(text)
+        val builder = NotificationCompat.Builder(App.context, "Updates")
+            .setSmallIcon(R.drawable.ic_done)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+        if (file != null && saveFileToDownloads(file)) {
+            builder.setContentTitle("Downloaded")
+            builder.setContentText("ML Kit text has been saved to downloads.")
+        } else {
+            builder.setContentTitle("Failed")
+            builder.setContentText("ML Kit text has failed to export output.")
+        }
+        NotificationManagerCompat.from(App.context).notify(0, builder.build())
     }
 }

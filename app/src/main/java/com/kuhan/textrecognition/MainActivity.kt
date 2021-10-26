@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import com.kuhan.textrecognition.databinding.ActivityMainBinding
+import com.kuhan.textrecognition.utils.createNotificationChannel
+import com.kuhan.textrecognition.utils.openFragment
 
 class MainActivity : AppCompatActivity() {
 
@@ -11,6 +13,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        createNotificationChannel()
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

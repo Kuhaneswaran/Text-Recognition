@@ -17,6 +17,8 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.kuhan.textrecognition.databinding.FragmentLiveTextRecognitionBinding
+import com.kuhan.textrecognition.utils.checkPermission
+import com.kuhan.textrecognition.utils.showToast
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 

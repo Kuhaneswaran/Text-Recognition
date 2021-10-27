@@ -1,6 +1,5 @@
 package com.kuhan.textrecognition
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.MutableLiveData
@@ -16,8 +15,8 @@ class StaticTextRecognitionViewModel : ViewModel() {
         imageUri.value = uri
     }
 
-    fun prepareCameraIntent(context: Activity): Intent? {
-        val pair = getCameraIntent(context)
+    fun prepareCameraIntent(): Intent? {
+        val pair = getCameraIntent()
         cameraUri = pair?.second
         return pair?.first
     }

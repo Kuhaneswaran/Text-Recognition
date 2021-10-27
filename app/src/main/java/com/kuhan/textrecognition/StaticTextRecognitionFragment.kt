@@ -1,9 +1,13 @@
 package com.kuhan.textrecognition
 
-import android.Manifest
+import android.Manifest.permission.CAMERA
+import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.app.Activity
+import android.app.DownloadManager
+import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -27,8 +31,10 @@ class StaticTextRecognitionFragment : Fragment() {
 
     private val activityForPermission = ActivityResultContracts.RequestPermission()
     private val activityForResult = ActivityResultContracts.StartActivityForResult()
-    private lateinit var permissionLauncher: ActivityResultLauncher<String>
-    private lateinit var permissionListener: (Boolean) -> Unit
+    private lateinit var cameraPermissionLauncher: ActivityResultLauncher<String>
+    private lateinit var cameraPermissionListener: (Boolean) -> Unit
+    private lateinit var storagePermissionLauncher: ActivityResultLauncher<String>
+    private lateinit var storagePermissionListener: (Boolean) -> Unit
     private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
     private lateinit var cameraLauncher: ActivityResultLauncher<Intent>
 
@@ -38,8 +44,12 @@ class StaticTextRecognitionFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        permissionLauncher = registerForActivityResult(activityForPermission) {
-            permissionListener(it)
+        cameraPermissionLauncher = registerForActivityResult(activityForPermission) {
+            cameraPermissionListener(it)
+        }
+
+        storagePermissionLauncher = registerForActivityResult(activityForPermission) {
+            storagePermissionListener(it)
         }
 
         cameraLauncher = registerForActivityResult(activityForResult) {
@@ -60,12 +70,12 @@ class StaticTextRecognitionFragment : Fragment() {
         binding.btnSaveOutput.isVisible = false
 
         binding.btnTakePhoto.setOnClickListener {
-            val intent = viewModel.prepareCameraIntent(requireActivity())
+            val intent = viewModel.prepareCameraIntent()
             intent ?: return@setOnClickListener showToast("Unable to prep camera")
-            if (checkPermission(Manifest.permission.CAMERA)) cameraLauncher.launch(intent)
+            if (checkPermission(CAMERA)) cameraLauncher.launch(intent)
             else {
-                permissionLauncher.launch(Manifest.permission.CAMERA)
-                permissionListener = {
+                cameraPermissionLauncher.launch(CAMERA)
+                cameraPermissionListener = {
                     if (it) cameraLauncher.launch(intent)
                     else showToast("Permission not granted by the user.")
                 }
@@ -94,7 +104,18 @@ class StaticTextRecognitionFragment : Fragment() {
                 .addOnSuccessListener {
                     binding.btnSaveOutput.isVisible = true
                     binding.boOverlay.add(it, inputImage.width, inputImage.height)
-                    binding.btnSaveOutput.setOnClickListener { _ -> saveOutput(it) }
+                    binding.btnSaveOutput.setOnClickListener { _ ->
+                        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+                            if (checkPermission(WRITE_EXTERNAL_STORAGE)) saveOutput(it)
+                            else {
+                                cameraPermissionLauncher.launch(WRITE_EXTERNAL_STORAGE)
+                                cameraPermissionListener = { isAllowed ->
+                                    if (isAllowed) saveOutput(it)
+                                    else showToast("Permission not granted by the user.")
+                                }
+                            }
+                        } else saveOutput(it)
+                    }
                 }
                 .addOnFailureListener {
                     binding.btnSaveOutput.isVisible = false
@@ -107,12 +128,15 @@ class StaticTextRecognitionFragment : Fragment() {
 
     private fun saveOutput(text: Text) {
         val file = MLKitUtils().getTextFile(text)
-        val builder = NotificationCompat.Builder(App.context, "Updates")
+        val builder = NotificationCompat.Builder(App.context, "0000")
             .setSmallIcon(R.drawable.ic_done)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
         if (file != null && saveFileToDownloads(file)) {
+            val intent = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)
+            val pendingIntent = PendingIntent.getActivity(App.context, 0, intent, 0)
             builder.setContentTitle("Downloaded")
             builder.setContentText("ML Kit text has been saved to downloads.")
+            builder.setContentIntent(pendingIntent)
         } else {
             builder.setContentTitle("Failed")
             builder.setContentText("ML Kit text has failed to export output.")

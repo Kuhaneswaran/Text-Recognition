@@ -32,8 +32,8 @@ fun AppCompatActivity.openFragment(fragment: Fragment) = with(this) {
         .commit()
 }
 
-fun Fragment.showToast(message: String?, length: Int = Toast.LENGTH_SHORT) =
-    Toast.makeText(context, message ?: "Error", length).show()
+fun showToast(message: String?, length: Int = Toast.LENGTH_SHORT) =
+    Toast.makeText(App.context, message ?: "Error", length).show()
 
 fun Activity.checkPermissions(permissions: Array<String>): Boolean = permissions.all {
     ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
@@ -44,27 +44,27 @@ fun Fragment.checkPermission(permission: String): Boolean =
 
 fun prepareGalleryIntent(): Intent = Intent(Intent.ACTION_PICK).apply { type = "image/*" }
 
-fun getCameraIntent(context: Activity): Pair<Intent, Uri>? {
+fun getCameraIntent(): Pair<Intent, Uri>? {
 
     // Create camera intent
     val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
 
     // Ensure that there's a camera activity to handle the intent
-    context.packageManager.let { intent.resolveActivity(it) ?: return null }
+    App.context.packageManager.let { intent.resolveActivity(it) ?: return null }
 
     // Create the File where the photo should go
-    val file: File = createImageFile(context) ?: return null
+    val file: File = createImageFile() ?: return null
     val authority = "${BuildConfig.APPLICATION_ID}.fileprovider"
-    val photoURI: Uri = FileProvider.getUriForFile(context, authority, file)
+    val photoURI: Uri = FileProvider.getUriForFile(App.context, authority, file)
     intent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
 
     return Pair(intent, photoURI)
 }
 
-fun createImageFile(context: Activity): File? {
+fun createImageFile(): File? {
     // Create an image file name
     val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-    val storageDir = ContextCompat.getExternalFilesDirs(context, Environment.DIRECTORY_PICTURES)
+    val storageDir = ContextCompat.getExternalFilesDirs(App.context, Environment.DIRECTORY_PICTURES)
     return try {
         val dir = if (storageDir.isNotEmpty()) storageDir[0] else null
         File.createTempFile("JPEG_${timeStamp}_", ".jpg", dir)
@@ -86,7 +86,7 @@ fun saveFileToDownloads(file: File): Boolean {
         } else {
             val dlDir =
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            val authority = "${App.context.packageName}.provider"
+            val authority = "${BuildConfig.APPLICATION_ID}.fileprovider"
             val destinyFile = File(dlDir, file.name)
             FileProvider.getUriForFile(App.context, authority, destinyFile)
         }?.also { downloadedUri ->
